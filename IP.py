@@ -6,6 +6,7 @@ import sys
 import csv
 import copy
 from utils import *
+from floorplan_utils import *
 from skimage import measure
 
 GAPS = {'wall_extraction': 5, 'door_extraction': 5, 'icon_extraction': 5, 'wall_neighbor': 5, 'door_neighbor': 5, 'icon_neighbor': 5, 'wall_conflict': 5, 'door_conflict': 5, 'icon_conflict': 5, 'wall_icon_neighbor': 5, 'wall_icon_conflict': 5, 'wall_door_neighbor': 5, 'door_point_conflict': 5}
@@ -35,8 +36,12 @@ NUM_DOOR_TYPES = 2
 #NUM_LABELS = NUM_WALL_TYPES + NUM_DOOR_TYPES + NUM_ICONS + NUM_ROOMS + 1
 NUM_LABELS = NUM_ICONS + NUM_ROOMS
 
-WALL_LABEL_OFFSET = NUM_ROOMS + 1
-DOOR_LABEL_OFFSET = NUM_ICONS + 1
+#default
+#WALL_LABEL_OFFSET = NUM_ROOMS + 1
+WALL_LABEL_OFFSET = NUM_FINAL_ROOMS
+#default
+#DOOR_LABEL_OFFSET = NUM_ICONS + 1
+DOOR_LABEL_OFFSET = NUM_FINAL_ICONS + 1
 ICON_LABEL_OFFSET = 0
 ROOM_LABEL_OFFSET = NUM_ICONS
 
@@ -1054,7 +1059,9 @@ def findCandidatesFromHeatmaps(iconHeatmaps, iconPointOffset, doorPointOffset):
   newIconPoints = []
   newDoorLines = []
   newDoorPoints = []
-  for iconIndex in range(1, NUM_ICONS + 2):
+  #default
+  #for iconIndex in range(1, NUM_ICONS + 2):
+  for iconIndex in range(1, 13):
     heatmap = iconHeatmaps[:, :, iconIndex] > 0.5
     kernel = np.ones((3, 3), dtype=np.uint8)
     heatmap = cv2.dilate(cv2.erode(heatmap.astype(np.uint8), kernel), kernel)
@@ -1351,7 +1358,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
 
     i_types = []
     for iconIndex in range(len(icons)):
-      i_types.append([LpVariable(cat=LpBinary, name="icon_type_" + str(iconIndex) + "_" + str(typeIndex)) for typeIndex in range(NUM_ICONS)])
+      #default
+      #i_types.append([LpVariable(cat=LpBinary, name="icon_type_" + str(iconIndex) + "_" + str(typeIndex)) for typeIndex in range(NUM_ICONS)])
+      i_types.append([LpVariable(cat=LpBinary, name="icon_type_" + str(iconIndex) + "_" + str(typeIndex)) for typeIndex in range(NUM_FINAL_ICONS)])
       continue
 
     l_dir_labels = []
@@ -1608,7 +1617,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
         pass
 
       #print('icon confidence', iconConfidence)
-      for typeIndex in range(NUM_ICONS):
+      #default
+      #for typeIndex in range(NUM_ICONS):
+      for typeIndex in range(NUM_FINAL_ICONS):
         obj += (-i_types[iconIndex][typeIndex] * (iconConfidence[typeIndex]) * iconTypeWeight)
         continue
       continue
@@ -1616,7 +1627,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
     ## Icon type one hot constraints
     for iconIndex in range(len(icons)):
       typeSum = LpAffineExpression()
-      for typeIndex in range(NUM_ICONS - 1):
+      #default
+      #for typeIndex in range(NUM_ICONS - 1):
+      for typeIndex in range(NUM_FINAL_ICONS - 1):
         typeSum += i_types[iconIndex][typeIndex]
         continue
       model += (typeSum == i_r[iconIndex])
@@ -1734,8 +1747,10 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
         filteredWallLines = [line for line in filteredWallLines if line[0] != line[1]]
         pass
 
-
-      drawLines(output_prefix + 'result_line.png', width, height, wallPoints, filteredWallLines, filteredWallLabels, lineColor=255)
+      #default
+      #drawLines(output_prefix + 'result_line.png', width, height, wallPoints, filteredWallLines, filteredWallLabels, lineColor=255)
+      drawLines('test/result_line.png', width, height, wallPoints, filteredWallLines, filteredWallLabels, lineColor=255)
+      
       #resultImage = drawLines('', width, height, wallPoints, filteredWallLines, filteredWallLabels, None, lineWidth=5, lineColor=255)
 
       filteredDoorLines = []
@@ -1751,7 +1766,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
 
       filteredDoorWallMap = findLineMapSingle(doorPoints, filteredDoorLines, wallPoints, filteredWallLines, gap=GAPS['wall_door_neighbor'])
       adjustDoorPoints(doorPoints, filteredDoorLines, wallPoints, filteredWallLines, filteredDoorWallMap)
-      drawLines(output_prefix + 'result_door.png', width, height, doorPoints, filteredDoorLines, lineColor=255)
+      #default
+      #drawLines(output_prefix + 'result_door.png', width, height, doorPoints, filteredDoorLines, lineColor=255)
+      drawLines('test/result_door.png', width, height, doorPoints, filteredDoorLines, lineColor=255)
 
       filteredIcons = []
       filteredIconTypes = []
@@ -1774,7 +1791,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
 
       #adjustPoints(iconPoints, filteredIconLines)
       #drawLines(output_prefix + 'lines_results_icon.png', width, height, iconPoints, filteredIconLines)
-      drawRectangles(output_prefix + 'result_icon.png', width, height, iconPoints, filteredIcons, filteredIconTypes)
+      #default
+      #drawRectangles(output_prefix + 'result_icon.png', width, height, iconPoints, filteredIcons, filteredIconTypes)
+      drawRectangles('test/result_icon.png', width, height, iconPoints, filteredIcons, filteredIconTypes)
 
       #resultImage = drawLines('', width, height, doorPoints, filteredDoorLines, [], resultImage, lineWidth=3, lineColor=0)
       #resultImage = drawRectangles('', width, height, iconPoints, filteredIcons, filteredIconTypes, 2, resultImage)
@@ -1821,8 +1840,9 @@ def reconstructFloorplan(wallCornerHeatmaps, doorCornerHeatmaps, iconCornerHeatm
         filteredWallPointLabels.append(wallPointLabels[pointIndex])
         continue
 
-
-      with open(output_prefix + 'floorplan.txt', 'w') as result_file:
+      #default
+      #with open(output_prefix + 'floorplan.txt', 'w') as result_file:
+      with open('test/floorplan.txt', 'w') as result_file:
         result_file.write(str(width) + '\t' + str(height) + '\n')
         result_file.write(str(len(filteredWallLines)) + '\n')
         for wallIndex, wall in enumerate(filteredWallLines):

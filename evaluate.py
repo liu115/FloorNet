@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
-from QP import reconstructFloorplan, findMatches
+from IP import reconstructFloorplan
+from QP import findMatches
 from RecordReader import *
 from train import *
 
@@ -56,7 +57,6 @@ def evaluate(options):
         pass
 
     dataset = getDatasetVal(filenames, '', '4' in options.branches, options.batchSize)
-
 
     iterator = dataset.make_one_shot_iterator()
     input_dict, gt_dict = iterator.get_next()
@@ -151,8 +151,8 @@ def evaluateBatch(options, gt_dict=None, pred_dict=None):
     datasetFlag = 1
     if options.useCache != -1:
         if options.loss != '5':
-            gt_dict = np.load(options.test_dir + '/dummy/gt_dict.npy')[()]
-            pred_dict = np.load(options.test_dir + '/dummy/pred_dict.npy')[()]
+            gt_dict = np.load(options.test_dir + '/dummy/gt_dict.npy', allow_pickle=True)[()]
+            pred_dict = np.load(options.test_dir + '/dummy/pred_dict.npy', allow_pickle=True)[()]
         else:
             gt_dict = np.load(options.test_dir.replace('loss5', 'loss0') + '/dummy/gt_dict.npy')[()]
             pred_wc = np.load(options.test_dir.replace('loss5', 'loss0') + '/dummy/pred_dict.npy')[()]['corner'][:, :, :, :NUM_WALL_CORNERS]
@@ -211,84 +211,6 @@ def evaluateBatch(options, gt_dict=None, pred_dict=None):
         pred_room = softmax(pred_dict['room'][batchIndex])
         if options.separateIconLoss:
             pred_icon[:, :, :-2] = pred_icon_separate[batchIndex][:, :, :-2]
-            #pred_icon = pred_icon_separate[batchIndex]
-            pass
-
-        if False:
-            #print('batch index', batchIndex)
-            cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_density.png', density)
-            #print('heatmap max value', pred_wc[batchIndex].max())
-
-            if datasetFlag in [0, 1, 4]:
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, pred_wc[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_corner_pred.png', cornerImage)
-
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, gt_wc[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_corner_gt.png', cornerImage)
-                pass
-
-
-            if False:
-                corner_heat = np.max(pred_wc[batchIndex], axis=-1)
-                #print('corner_shape', corner_heat.shape)
-                cmap = plt.get_cmap('jet')
-                corner_rgba_img = cmap(corner_heat)
-                corner_rgb_img = np.delete(corner_rgba_img, 3, 2)
-                #print('rgb_out', corner_rgb_img.shape, corner_rgb_img.max(), corner_rgb_img.min())
-                corner_rgb_img = (corner_rgb_img * 255).round().astype('uint8')
-                #print('rgb_out', corner_rgb_img.shape, corner_rgb_img.max())
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_corner_heatmap.png', corner_rgb_img)
-                pass
-
-            if datasetFlag in [1, 4]:
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, pred_oc[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_opening_corner_pred.png', cornerImage)
-
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, pred_ic[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_icon_corner_pred.png', cornerImage)
-
-
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, gt_oc[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_opening_corner_gt.png', cornerImage)
-
-                cornerImage = drawSegmentationImage(np.concatenate([threshold, gt_ic[batchIndex]], axis=2), blackIndex=0)
-                cornerImage[cornerImage == 0] = density[cornerImage == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_icon_corner_gt.png', cornerImage)
-                pass
-
-
-            if datasetFlag in [1, 2, 3, 4]:
-                icon_density = drawSegmentationImage(gt_dict['icon'][batchIndex], blackIndex=0)
-                icon_density[icon_density == 0] = density[icon_density == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_icon_gt.png', icon_density)
-
-                icon_density = drawSegmentationImage(pred_dict['icon'][batchIndex], blackIndex=0)
-                icon_density[icon_density == 0] = density[icon_density == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_icon_pred.png', icon_density)
-                pass
-
-            if datasetFlag in [1, 3, 4]:
-                room_density = drawSegmentationImage(gt_dict['room'][batchIndex], blackIndex=0)
-                room_density[room_density == 0] = density[room_density == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_room_gt.png', room_density)
-
-                room_density = drawSegmentationImage(pred_dict['room'][batchIndex], blackIndex=0)
-                room_density[room_density == 0] = density[room_density == 0]
-                cv2.imwrite(options.test_dir + '/' + str(batchIndex) + '_room_pred.png', room_density)
-                pass
-
-
-            if batchIndex == 0 and False:
-                for c in xrange(22):
-                    cv2.imwrite(options.test_dir + '/mask_' + str(c) + '.png', cv2.dilate(drawMaskImage(corner_segmentation[batchIndex] == c), np.ones((3, 3)), 3))
-                    continue
-                continue
-
 
         if batchIndex < options.visualizeReconstruction or True:
             if options.debug >= 0 and batchIndex != options.debug:

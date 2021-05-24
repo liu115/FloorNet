@@ -1,4 +1,7 @@
-from gurobipy import *
+try:
+    from gurobipy import *
+except:
+    print('No Gurobi installed')
 import cv2
 import numpy as np
 import sys
